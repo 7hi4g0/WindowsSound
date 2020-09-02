@@ -6,6 +6,9 @@
 #include <assert.h>
 #include <windows.h>
 #include <dsound.h>
+#include <math.h>
+
+#define PI 3.14159265f
 
 
 int SamplesPerSecond = 48000;
@@ -22,9 +25,14 @@ WAVEFORMATEX WaveFormat;
 DSBUFFERDESC SecondaryBufferDesc;
 LPDIRECTSOUNDBUFFER SecondaryBuffer;
 
+typedef float (* WaveFn)(float TimeIndex, float Tone);
+
 LRESULT CALLBACK MyWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void InitDSound(HWND hWnd);
-void FillBuffer();
+void FillBuffer(WaveFn Wave);
+
+float SquareWave(float TimeIndex, float Tone);
+float SineWave(float TimeIndex, float Tone);
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLIne, int nCmdShow) {
     const WCHAR CLASS_NAME[] = L"Windows Sound Test";
@@ -54,7 +62,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLIne
     }
 
     InitDSound(hWnd);
-    FillBuffer();
+    FillBuffer(SineWave);
     ShowWindow(hWnd, nCmdShow);
 
     SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
@@ -130,7 +138,7 @@ void InitDSound(HWND hWnd) {
     }
 }
 
-void FillBuffer() {
+void FillBuffer(WaveFn Wave) {
     LPVOID BufferBlock1;
     DWORD BufferBlock1Size;
     LPVOID BufferBlock2;
@@ -147,15 +155,20 @@ void FillBuffer() {
     assert(BufferBlock1Size == BufferSize);
 
     int ToneHz = 256;
-    int Volume = 5000;
+    int Volume = 3000;
     int SamplesToWrite = BufferSize / (BytesPerSample * Channels);
+
+    int SamplesPerPeriod = (SamplesPerSecond / ToneHz);
 
     int16_t *Buffer = (int16_t *) BufferBlock1;
 
     // TODO: What to do when RunningSample wrap?
     // or, How to prevent it wrapping?
     for (int RunningSample = 0; RunningSample < SamplesToWrite; RunningSample++) {
-        int SampleValue = (RunningSample / ((SamplesPerSecond / ToneHz) * 2)) % 2 == 0 ? Volume : -Volume;
+        float TimeIndex = (float) RunningSample / SamplesPerSecond;
+
+        int SampleValue = Wave(TimeIndex, ToneHz) * Volume;
+
         *Buffer++ = SampleValue;
         *Buffer++ = SampleValue;
     }
@@ -164,4 +177,12 @@ void FillBuffer() {
         PostQuitMessage(-1);
         return;
     }
+}
+
+float SquareWave(float TimeIndex, float Tone) {
+    return fmodf(TimeIndex / (Tone * 2), 2) < 1.0f ? 1.0f : -1.0f;
+}
+
+float SineWave(float TimeIndex, float Tone) {
+    return sinf(TimeIndex * 2 * PI * Tone);
 }
