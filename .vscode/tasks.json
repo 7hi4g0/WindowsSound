@@ -11,7 +11,8 @@
 				"/Fe:",
 				"main.exe",
 				"${workspaceFolder}\\main.cpp",
-				"user32.lib"
+				"user32.lib",
+				"dsound.lib"
 			],
 			"options": {
 				"cwd": "${workspaceFolder}\\build"
