@@ -2,11 +2,12 @@
 #define UNICODE
 #endif
 
-#include <stdint.h>
 #include <assert.h>
+#include <stdint.h>
+#include <math.h>
+
 #include <windows.h>
 #include <dsound.h>
-#include <math.h>
 
 #define PI 3.14159265f
 
@@ -18,18 +19,17 @@ int BufferLength = 2;
 int BytesPerSecond = Channels * BytesPerSample * SamplesPerSecond;
 int BufferSize = BufferLength * BytesPerSecond;
 
-LPDIRECTSOUND DSContext;
-DSBUFFERDESC PrimaryBufferDesc;
-LPDIRECTSOUNDBUFFER PrimaryBuffer;
-WAVEFORMATEX WaveFormat;
-DSBUFFERDESC SecondaryBufferDesc;
-LPDIRECTSOUNDBUFFER SecondaryBuffer;
+struct SoundContext {
+    LPDIRECTSOUND DSContext;
+    LPDIRECTSOUNDBUFFER PrimaryBuffer;
+    LPDIRECTSOUNDBUFFER SecondaryBuffer;
+};
 
 typedef float (* WaveFn)(float TimeIndex, float Tone);
 
 LRESULT CALLBACK MyWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-void InitDSound(HWND hWnd);
-void FillBuffer(WaveFn Wave);
+int InitDSound(HWND hWnd, SoundContext *Context);
+int FillBuffer(SoundContext Context, WaveFn Wave);
 
 float SquareWave(float TimeIndex, float Tone);
 float SineWave(float TimeIndex, float Tone);
@@ -61,11 +61,21 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLIne
         return 0;
     }
 
-    InitDSound(hWnd);
-    FillBuffer(SineWave);
-    ShowWindow(hWnd, nCmdShow);
+    SoundContext Context;
+    if (InitDSound(hWnd, &Context) == 0 && FillBuffer(Context, SineWave) == 0) {
+        ShowWindow(hWnd, nCmdShow);
 
-    SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+        Context.SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+    } else {
+        MessageBoxEx(
+            hWnd,
+            L"Error initialising Audio system",
+            NULL,
+            MB_ICONERROR | MB_OK,
+            0
+        );
+        PostQuitMessage(-1);
+    }
 
     MSG msg = {};
     while (GetMessage(&msg, NULL, 0, 0)) {
@@ -86,32 +96,33 @@ LRESULT CALLBACK MyWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     }
 }
 
-void InitDSound(HWND hWnd) {
+int InitDSound(HWND hWnd, SoundContext *Context) {
+    // TODO: Improve this
+    assert(Context != NULL);
+
+    LPDIRECTSOUND DSContext;
+    LPDIRECTSOUNDBUFFER PrimaryBuffer;
+    LPDIRECTSOUNDBUFFER SecondaryBuffer;
+
     if(FAILED(DirectSoundCreate(NULL, &DSContext, NULL))) {
-        PostQuitMessage(-1);
-        return;
+        return -1;
     }
 
     // TODO: Do I need it?
     if (FAILED(DSContext->SetCooperativeLevel(hWnd, DSSCL_PRIORITY))) {
-        PostQuitMessage(-1);
-        return;
+        return -1;
     }
 
-    PrimaryBufferDesc = {};
+    DSBUFFERDESC PrimaryBufferDesc = {};
     PrimaryBufferDesc.dwSize = sizeof(DSBUFFERDESC);
     PrimaryBufferDesc.dwFlags = DSBCAPS_PRIMARYBUFFER;
     PrimaryBufferDesc.guid3DAlgorithm = DS3DALG_DEFAULT;
 
     if(FAILED(DSContext->CreateSoundBuffer(&PrimaryBufferDesc, &PrimaryBuffer, NULL))) {
-        // TODO: Make it more robust and alert or log the error
-        // This quits the application but doesn't really work.
-        // If anything tries to use the values set here it will segfault
-        PostQuitMessage(-1);
-        return;
+        return -1;
     }
 
-    WaveFormat = {};
+    WAVEFORMATEX WaveFormat = {};
     WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
     WaveFormat.nChannels = Channels;
     WaveFormat.nSamplesPerSec = SamplesPerSecond;
@@ -121,11 +132,10 @@ void InitDSound(HWND hWnd) {
 
     // TODO: Do I need it?
     if (FAILED(PrimaryBuffer->SetFormat(&WaveFormat))) {
-        PostQuitMessage(-1);
-        return;
+        return -1;
     }
 
-    SecondaryBufferDesc = {};
+    DSBUFFERDESC SecondaryBufferDesc = {};
     SecondaryBufferDesc.dwSize = sizeof(DSBUFFERDESC);
     SecondaryBufferDesc.dwFlags = 0;
     SecondaryBufferDesc.dwBufferBytes = BufferSize;
@@ -133,20 +143,26 @@ void InitDSound(HWND hWnd) {
     SecondaryBufferDesc.guid3DAlgorithm = DS3DALG_DEFAULT;
 
     if(FAILED(DSContext->CreateSoundBuffer(&SecondaryBufferDesc, &SecondaryBuffer, NULL))) {
-        PostQuitMessage(-1);
-        return;
+        return -1;
     }
+
+    *Context = {
+        DSContext,
+        PrimaryBuffer,
+        SecondaryBuffer
+    };
+
+    return 0;
 }
 
-void FillBuffer(WaveFn Wave) {
+int FillBuffer(SoundContext Context, WaveFn Wave) {
     LPVOID BufferBlock1;
     DWORD BufferBlock1Size;
     LPVOID BufferBlock2;
     DWORD BufferBlock2Size;
 
-    if (FAILED(SecondaryBuffer->Lock(0, BufferSize, &BufferBlock1, &BufferBlock1Size, &BufferBlock2, &BufferBlock2Size, 0))) {
-        PostQuitMessage(-1);
-        return;
+    if (FAILED(Context.SecondaryBuffer->Lock(0, BufferSize, &BufferBlock1, &BufferBlock1Size, &BufferBlock2, &BufferBlock2Size, 0))) {
+        return -1;
     }
 
     assert(BufferBlock2 == NULL);
@@ -173,14 +189,15 @@ void FillBuffer(WaveFn Wave) {
         *Buffer++ = SampleValue;
     }
     
-    if (FAILED(SecondaryBuffer->Unlock(BufferBlock1, BufferBlock1Size,BufferBlock2, BufferBlock2Size))) {
-        PostQuitMessage(-1);
-        return;
+    if (FAILED(Context.SecondaryBuffer->Unlock(BufferBlock1, BufferBlock1Size,BufferBlock2, BufferBlock2Size))) {
+        return -1;
     }
+
+    return 0;
 }
 
 float SquareWave(float TimeIndex, float Tone) {
-    return fmodf(TimeIndex / (Tone * 2), 2) < 1.0f ? 1.0f : -1.0f;
+    return fmodf(TimeIndex * Tone * 2, 2) < 1.0f ? 1.0f : -1.0f;
 }
 
 float SineWave(float TimeIndex, float Tone) {
