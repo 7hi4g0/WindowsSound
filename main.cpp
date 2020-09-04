@@ -9,6 +9,8 @@
 #include <windows.h>
 #include <dsound.h>
 
+#include "wave.h"
+
 #define PI 3.14159265f
 
 
@@ -25,17 +27,17 @@ struct SoundContext {
     LPDIRECTSOUNDBUFFER SecondaryBuffer;
 };
 
-typedef float (* WaveFn)(float TimeIndex, float Tone);
-
 LRESULT CALLBACK MyWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 int InitDSound(HWND hWnd, SoundContext *Context);
-int FillBuffer(SoundContext Context, WaveFn Wave);
+int FillBuffer(SoundContext Context, WaveFn Wave, float ToneHz, int Volume);
 
 float SquareWave(float TimeIndex, float Tone);
 float SineWave(float TimeIndex, float Tone);
+float SawtoothWave(float TimeIndex, float Tone);
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLIne, int nCmdShow) {
     const WCHAR CLASS_NAME[] = L"Windows Sound Test";
+    const WCHAR WINDOW_NAME[] = L"Windows Sound Systems Test";
 
     WNDCLASSEX window_class = {};
     window_class.cbSize = sizeof(WNDCLASSEX);
@@ -48,7 +50,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLIne
     HWND hWnd = CreateWindowEx(
         WS_EX_OVERLAPPEDWINDOW,
         CLASS_NAME,
-        L"Windows Sound Systems Test",
+        WINDOW_NAME,
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
         NULL,
@@ -62,7 +64,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLIne
     }
 
     SoundContext Context;
-    if (InitDSound(hWnd, &Context) == 0 && FillBuffer(Context, SineWave) == 0) {
+    // TODO: This is a bit ugly right now. Can be improved.
+    if (InitDSound(hWnd, &Context) == 0 && FillBuffer(Context, SineWave, 64, 3000) == 0) {
         ShowWindow(hWnd, nCmdShow);
 
         Context.SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
@@ -155,7 +158,7 @@ int InitDSound(HWND hWnd, SoundContext *Context) {
     return 0;
 }
 
-int FillBuffer(SoundContext Context, WaveFn Wave) {
+int FillBuffer(SoundContext Context, WaveFn Wave, float ToneHz, int Volume) {
     LPVOID BufferBlock1;
     DWORD BufferBlock1Size;
     LPVOID BufferBlock2;
@@ -170,20 +173,16 @@ int FillBuffer(SoundContext Context, WaveFn Wave) {
     assert(BufferBlock1 != NULL);
     assert(BufferBlock1Size == BufferSize);
 
-    int ToneHz = 256;
-    int Volume = 3000;
     int SamplesToWrite = BufferSize / (BytesPerSample * Channels);
-
-    int SamplesPerPeriod = (SamplesPerSecond / ToneHz);
 
     int16_t *Buffer = (int16_t *) BufferBlock1;
 
     // TODO: What to do when RunningSample wrap?
     // or, How to prevent it wrapping?
-    for (int RunningSample = 0; RunningSample < SamplesToWrite; RunningSample++) {
+    for (uint32_t RunningSample = 0; RunningSample < SamplesToWrite; RunningSample++) {
         float TimeIndex = (float) RunningSample / SamplesPerSecond;
 
-        int SampleValue = Wave(TimeIndex, ToneHz) * Volume;
+        int16_t SampleValue = Wave(TimeIndex, ToneHz) * Volume;
 
         *Buffer++ = SampleValue;
         *Buffer++ = SampleValue;
@@ -202,4 +201,8 @@ float SquareWave(float TimeIndex, float Tone) {
 
 float SineWave(float TimeIndex, float Tone) {
     return sinf(TimeIndex * 2 * PI * Tone);
+}
+
+float SawtoothWave(float TimeIndex, float Tone) {
+    return fmodf(TimeIndex * Tone + 1.0f, 2) - 1.0f;
 }
