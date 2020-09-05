@@ -1,9 +1,11 @@
+#include <math.h>
+
 #include "wave.h"
 
 // Some experimentation with octaves and fading
 // Liked the result and I'm keeping the code, but it's not useful in current form
 
-float Modify(WaveFn Wave) {
+float Modify(WaveFn Wave, float TimeIndex, float ToneHz) {
     int octaves = 5;
 
     float IntermediateSampleValue = 0;
