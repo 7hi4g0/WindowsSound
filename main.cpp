@@ -2,13 +2,21 @@
 #define UNICODE
 #endif
 
+
 #include <math.h>
 
 #include <windows.h>
 
 #include "wave.h"
 
+#define X_AUDIO
+#undef DIRECT_SOUND
+
+#ifdef DIRECT_SOUND
 #include "dsound.cpp"
+#elif defined(X_AUDIO)
+#include "xaudio.cpp"
+#endif
 
 LRESULT CALLBACK MyWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -46,10 +54,17 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLIne
 
     SoundContext Context;
     // TODO: This is a bit ugly right now. Can be improved.
+#ifdef DIRECT_SOUND
     if (InitDSound(hWnd, &Context) == 0 && FillDSBuffer(Context, SineWave, 64, 3000) == 0) {
         ShowWindow(hWnd, nCmdShow);
 
-        Context.SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+        DSPlay(Context);
+#elif defined(X_AUDIO)
+    if (InitXAudio(hWnd, &Context) == 0 && FillXAudioBuffer(Context, SineWave, 64, 3000) == 0) {
+        ShowWindow(hWnd, nCmdShow);
+
+        XAudioPlay(Context);
+#endif
     } else {
         MessageBoxEx(
             hWnd,

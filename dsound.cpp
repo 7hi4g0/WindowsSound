@@ -93,3 +93,7 @@ int FillDSBuffer(SoundContext Context, WaveFn Wave, float ToneHz, int Volume) {
 
     return 0;
 }
+
+void DSPlay(SoundContext Context) {
+    Context.SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+}

@@ -12,7 +12,9 @@
 				"main.exe",
 				"${workspaceFolder}\\main.cpp",
 				"user32.lib",
-				"dsound.lib"
+				"dsound.lib",
+				"xaudio2.lib",
+				"ole32.lib"
 			],
 			"options": {
 				"cwd": "${workspaceFolder}\\build"
