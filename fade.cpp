@@ -6,16 +6,18 @@
 // Liked the result and I'm keeping the code, but it's not useful in current form
 
 float Modify(WaveFn Wave, float TimeIndex, float ToneHz) {
-    int octaves = 5;
+    int octaves = 3;
 
-    float IntermediateSampleValue = 0;
-    int Modifier = 1;
+    float Modifier = 0.25f;
     float TotalIntensity = 0;
+    
+    float IntermediateSampleValue = Wave(TimeIndex, ToneHz);
 
     for (int octave = 1; octave <= octaves; octave++) {
         IntermediateSampleValue += Wave(TimeIndex, ToneHz * Modifier) * (1.0f / Modifier);
-        Modifier *= 2;
+        IntermediateSampleValue += Wave(TimeIndex, ToneHz / Modifier) * (1.0f / Modifier);
         TotalIntensity += 1.0f/Modifier;
+        Modifier *= 2;
     }
 
     return (IntermediateSampleValue / TotalIntensity) * (1 - (1.0f/(1.0f + expf(4.0f * (1.25f - TimeIndex)))));

@@ -8,9 +8,11 @@
 #include <windows.h>
 
 #include "wave.h"
+#include "fade.cpp"
+#include "effects.cpp"
 
 #define X_AUDIO
-#undef DIRECT_SOUND
+// #define DIRECT_SOUND
 
 #ifdef DIRECT_SOUND
 #include "dsound.cpp"
@@ -102,11 +104,12 @@ void FillBuffer(int16_t * Buffer, int SamplesToWrite, WaveFn Wave, float ToneHz,
     for (uint32_t RunningSample = 0; RunningSample < SamplesToWrite; RunningSample++) {
         float TimeIndex = (float) RunningSample / SamplesPerSecond;
 
-        int16_t SampleValue = Wave(TimeIndex, ToneHz) * Volume;
+        int16_t SampleValue = Modify(Wave, TimeIndex, ToneHz) * Volume;
 
         *Buffer++ = SampleValue;
         *Buffer++ = SampleValue;
     }
+    // KarplusStrong(Buffer, SamplesToWrite, SamplesPerSecond, ToneHz, Volume);
 }
 
 float SquareWave(float TimeIndex, float Tone) {

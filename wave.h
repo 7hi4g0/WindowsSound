@@ -1,5 +1,6 @@
 #ifndef WAVE_H
 
+#include <stdlib.h>
 #include <assert.h>
 #include <stdint.h>
 
