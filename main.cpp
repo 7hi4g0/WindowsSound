@@ -26,7 +26,7 @@ float SquareWave(float TimeIndex, float Tone);
 float SineWave(float TimeIndex, float Tone);
 float SawtoothWave(float TimeIndex, float Tone);
 
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLIne, int nCmdShow) {
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
     const WCHAR CLASS_NAME[] = L"Windows Sound Test";
     const WCHAR WINDOW_NAME[] = L"Windows Sound Systems Test";
 
@@ -97,14 +97,14 @@ LRESULT CALLBACK MyWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     }
 }
 
-void FillBuffer(int16_t * Buffer, int SamplesToWrite, WaveFn Wave, float ToneHz, int Volume) {
+void FillBuffer(int16_t * Buffer, uint32_t SamplesToWrite, WaveFn Wave, float ToneHz, int Volume) {
 
     // TODO: What to do when RunningSample wrap?
     // or, How to prevent it wrapping?
     for (uint32_t RunningSample = 0; RunningSample < SamplesToWrite; RunningSample++) {
         float TimeIndex = (float) RunningSample / SamplesPerSecond;
 
-        int16_t SampleValue = Modify(Wave, TimeIndex, ToneHz) * Volume;
+        int16_t SampleValue = (int16_t) (Modify(Wave, TimeIndex, ToneHz) * Volume);
 
         *Buffer++ = SampleValue;
         *Buffer++ = SampleValue;

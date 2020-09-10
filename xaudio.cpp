@@ -9,7 +9,7 @@ struct SoundContext {
     IXAudio2SourceVoice *SourceVoice;
 };
 
-int InitXAudio(HWND hWnd, SoundContext *Context) {
+int InitXAudio(HWND, SoundContext *Context) {
     // TODO: Improve this
     assert(Context != NULL);
 
