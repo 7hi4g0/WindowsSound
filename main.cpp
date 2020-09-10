@@ -24,8 +24,8 @@ BITMAPINFO BitmapInfo;
 void *BitmapMemory;
 // LONG BitmapWidth = SamplesPerSecond * 2;
 // LONG BitmapHeight = 3000 * 2 + 1;
-LONG BitmapWidth = 9600;
-LONG BitmapHeight = 5001;
+uint16_t BitmapWidth = 9600;
+uint16_t BitmapHeight = 5001;
 
 void InitImageBuffer();
 void DrawGraph(HWND hWnd, HDC DeviceContext);
@@ -36,7 +36,7 @@ float SquareWave(float TimeIndex, float Tone);
 float SineWave(float TimeIndex, float Tone);
 float SawtoothWave(float TimeIndex, float Tone);
 
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow) {
     const WCHAR CLASS_NAME[] = L"Windows Sound Test";
     const WCHAR WINDOW_NAME[] = L"Windows Sound Systems Test";
 
@@ -146,8 +146,8 @@ void InitImageBuffer() {
 
     uint32_t *CurrentPixel = (uint32_t *) BitmapMemory;
 
-    for (LONG Y = 0; Y < BitmapHeight; Y++) {
-        for (LONG X = 0; X < BitmapWidth; X++) {
+    for (uint16_t Y = 0; Y < BitmapHeight; Y++) {
+        for (uint16_t X = 0; X < BitmapWidth; X++) {
             *CurrentPixel++ = 0x00808080;
         }
     }
@@ -179,7 +179,7 @@ void FillBuffer(int16_t * Buffer, uint32_t SamplesToWrite, WaveFn Wave, float To
         *Buffer++ = SampleValue;
 
         if (RunningSample < BitmapWidth) {
-            uint16_t X = RunningSample;
+            uint16_t X = (uint16_t) RunningSample;
             uint16_t Y = ((SampleValue + 3000) / 2) + 1000;
 
             ((uint32_t *)BitmapMemory)[Y * BitmapWidth + X] = 0;
