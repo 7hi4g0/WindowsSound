@@ -20,6 +20,16 @@
 #include "xaudio.cpp"
 #endif
 
+BITMAPINFO BitmapInfo;
+void *BitmapMemory;
+// LONG BitmapWidth = SamplesPerSecond * 2;
+// LONG BitmapHeight = 3000 * 2 + 1;
+LONG BitmapWidth = 9600;
+LONG BitmapHeight = 5001;
+
+void InitImageBuffer();
+void DrawGraph(HWND hWnd, HDC DeviceContext);
+
 LRESULT CALLBACK MyWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 float SquareWave(float TimeIndex, float Tone);
@@ -32,6 +42,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
 
     WNDCLASSEX window_class = {};
     window_class.cbSize = sizeof(WNDCLASSEX);
+    window_class.style = CS_OWNDC|CS_HREDRAW|CS_VREDRAW;
     window_class.lpfnWndProc = MyWindowProc;
     window_class.hInstance = hInstance;
     window_class.lpszClassName = CLASS_NAME;
@@ -53,6 +64,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
     if (hWnd == NULL) {
         return 0;
     }
+
+    InitImageBuffer();
 
     SoundContext Context;
     // TODO: This is a bit ugly right now. Can be improved.
@@ -78,10 +91,23 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
         PostQuitMessage(-1);
     }
 
-    MSG msg = {};
-    while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+    int Running = true;
+    while (Running) {
+        MSG msg = {};
+        while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+            if (msg.message == WM_QUIT) {
+                Running = false;
+            }
+
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        // HDC DeviceContext = GetDC(hWnd);
+
+        // DrawGraph(hWnd, DeviceContext);
+
+        // ReleaseDC(hWnd, DeviceContext);
     }
 
     return 0;
@@ -92,9 +118,52 @@ LRESULT CALLBACK MyWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
         case WM_DESTROY:
             PostQuitMessage(0);
             return 0;
+        case WM_PAINT:
+        {
+            PAINTSTRUCT Paint;
+            HDC DeviceContext = BeginPaint(hwnd, &Paint);
+            DrawGraph(hwnd, DeviceContext);
+            EndPaint(hwnd, &Paint);
+            return 0;
+        }
         default:
             return DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
+}
+
+void InitImageBuffer() {
+    BitmapInfo = {};
+    BitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    BitmapInfo.bmiHeader.biWidth = BitmapWidth;
+    BitmapInfo.bmiHeader.biHeight = BitmapHeight;
+    BitmapInfo.bmiHeader.biPlanes = 1;
+    BitmapInfo.bmiHeader.biBitCount = 32;
+    BitmapInfo.bmiHeader.biCompression = BI_RGB;
+
+    uint32_t BitmapSize = BitmapWidth * BitmapHeight * 4;
+
+    BitmapMemory = VirtualAlloc(0, BitmapSize, MEM_COMMIT, PAGE_READWRITE);
+
+    uint32_t *CurrentPixel = (uint32_t *) BitmapMemory;
+
+    for (LONG Y = 0; Y < BitmapHeight; Y++) {
+        for (LONG X = 0; X < BitmapWidth; X++) {
+            *CurrentPixel++ = 0x00808080;
+        }
+    }
+}
+
+void DrawGraph(HWND hWnd, HDC DeviceContext) {
+    RECT WindowRect;
+    GetClientRect(hWnd, &WindowRect);
+    int WindowWidth = WindowRect.right - WindowRect.left;
+    int WindowHeight = WindowRect.bottom - WindowRect.top;
+
+    StretchDIBits(DeviceContext,
+                    0, 0, WindowWidth, WindowHeight,
+                    0, 0, BitmapWidth, BitmapHeight,
+                    BitmapMemory, &BitmapInfo,
+                    DIB_RGB_COLORS, SRCCOPY);
 }
 
 void FillBuffer(int16_t * Buffer, uint32_t SamplesToWrite, WaveFn Wave, float ToneHz, int Volume) {
@@ -108,6 +177,13 @@ void FillBuffer(int16_t * Buffer, uint32_t SamplesToWrite, WaveFn Wave, float To
 
         *Buffer++ = SampleValue;
         *Buffer++ = SampleValue;
+
+        if (RunningSample < BitmapWidth) {
+            uint16_t X = RunningSample;
+            uint16_t Y = ((SampleValue + 3000) / 2) + 1000;
+
+            ((uint32_t *)BitmapMemory)[Y * BitmapWidth + X] = 0;
+        }
     }
     // KarplusStrong(Buffer, SamplesToWrite, SamplesPerSecond, ToneHz, Volume);
 }
