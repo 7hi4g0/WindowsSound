@@ -51,6 +51,7 @@ int InitXAudio(HWND hWnd, SoundContext *Context) {
 }
 
 int FillXAudioBuffer(SoundContext Context, WaveFn Wave, float ToneHz, int Volume) {
+    // Need to save a reference to this somewhere, so I can change or free it.
     int16_t *Buffer = (int16_t *)VirtualAlloc(NULL, BufferSize, MEM_COMMIT, PAGE_READWRITE);
 
     int SamplesToWrite = BufferSize / (BytesPerSample * Channels);

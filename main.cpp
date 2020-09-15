@@ -2,7 +2,6 @@
 #define UNICODE
 #endif
 
-
 #include <math.h>
 
 #include <windows.h>
@@ -42,7 +41,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 
     WNDCLASSEX window_class = {};
     window_class.cbSize = sizeof(WNDCLASSEX);
-    window_class.style = CS_OWNDC|CS_HREDRAW|CS_VREDRAW;
+    window_class.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     window_class.lpfnWndProc = MyWindowProc;
     window_class.hInstance = hInstance;
     window_class.lpszClassName = CLASS_NAME;
@@ -70,12 +69,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     SoundContext Context;
     // TODO: This is a bit ugly right now. Can be improved.
 #ifdef DIRECT_SOUND
-    if (InitDSound(hWnd, &Context) == 0 && FillDSBuffer(Context, SineWave, 64, 3000) == 0) {
+    if (InitDSound(hWnd, &Context) == 0 && FillDSBuffer(Context, SineWave, 440, 3000) == 0) {
         ShowWindow(hWnd, nCmdShow);
 
         DSPlay(Context);
 #elif defined(X_AUDIO)
-    if (InitXAudio(hWnd, &Context) == 0 && FillXAudioBuffer(Context, SineWave, 64, 3000) == 0) {
+    if (InitXAudio(hWnd, &Context) == 0 && FillXAudioBuffer(Context, SineWave, 440, 3000) == 0) {
         ShowWindow(hWnd, nCmdShow);
 
         XAudioPlay(Context);
@@ -116,8 +115,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
 LRESULT CALLBACK MyWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch(uMsg) {
         case WM_DESTROY:
+        {
             PostQuitMessage(0);
             return 0;
+        }
         case WM_PAINT:
         {
             PAINTSTRUCT Paint;
@@ -168,6 +169,8 @@ void DrawGraph(HWND hWnd, HDC DeviceContext) {
 
 void FillBuffer(int16_t * Buffer, uint32_t SamplesToWrite, WaveFn Wave, float ToneHz, int Volume) {
 
+    int16_t *OutputBuffer = Buffer;
+
     // TODO: What to do when RunningSample wrap?
     // or, How to prevent it wrapping?
     for (uint32_t RunningSample = 0; RunningSample < SamplesToWrite; RunningSample++) {
@@ -175,17 +178,24 @@ void FillBuffer(int16_t * Buffer, uint32_t SamplesToWrite, WaveFn Wave, float To
 
         int16_t SampleValue = (int16_t) (Modify(Wave, TimeIndex, ToneHz) * Volume);
 
-        *Buffer++ = SampleValue;
-        *Buffer++ = SampleValue;
+        *OutputBuffer++ = SampleValue;
+        *OutputBuffer++ = SampleValue;
+    }
+
+    // KarplusStrong(Buffer, SamplesToWrite, SamplesPerSecond, ToneHz, Volume);
+
+    OutputBuffer = Buffer;
+    for (uint32_t RunningSample = 0; RunningSample < BitmapWidth; RunningSample++) {
 
         if (RunningSample < BitmapWidth) {
             uint16_t X = (uint16_t) RunningSample;
-            uint16_t Y = ((SampleValue + 3000) / 2) + 1000;
+            uint16_t Y = ((*OutputBuffer + 3000) / 2) + 1000;
 
             ((uint32_t *)BitmapMemory)[Y * BitmapWidth + X] = 0;
         }
+        OutputBuffer++;
+        OutputBuffer++;
     }
-    // KarplusStrong(Buffer, SamplesToWrite, SamplesPerSecond, ToneHz, Volume);
 }
 
 float SquareWave(float TimeIndex, float Tone) {

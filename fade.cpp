@@ -8,15 +8,15 @@
 float Modify(WaveFn Wave, float TimeIndex, float ToneHz) {
     int octaves = 3;
 
-    float Modifier = 0.25f;
-    float TotalIntensity = 0;
+    float Modifier = 2.0f;
+    float TotalIntensity = 1.329771f;
     
     float IntermediateSampleValue = Wave(TimeIndex, ToneHz);
 
     for (int octave = 1; octave <= octaves; octave++) {
         IntermediateSampleValue += Wave(TimeIndex, ToneHz * Modifier) * (1.0f / Modifier);
-        IntermediateSampleValue += Wave(TimeIndex, ToneHz / Modifier) * (1.0f / Modifier);
-        TotalIntensity += 1.0f/Modifier;
+        // IntermediateSampleValue += Wave(TimeIndex, ToneHz / Modifier) * (1.0f / Modifier);
+        // TotalIntensity += 2.0f/Modifier;
         Modifier *= 2;
     }
 
